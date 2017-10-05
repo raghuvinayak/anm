@@ -59,9 +59,9 @@ curl http://localhost:5000/run/ethvalue_stream1_stream_2 ....
 2.Change stream
 curl http://localhost:5000/change/ethvalue_stream1_stream_2 ....
 3.Stop stream
-curl http://localhost:5000/stop'
+curl http://localhost:5000/stop
 4.Show active streams
-curl http://localhost:5000/showstream'
+curl http://localhost:5000/showstream
 5.Add stream
 curl http://localhost:5000/add/ethvalue_stream1_stream_2 ....
 6.Delete stream
