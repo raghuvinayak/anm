@@ -71,5 +71,5 @@ curl http://0.0.0.0:5000/delete/etvalue_stream1_stream_2 ....
 Run mp(Measuring point) using  ./mp --local -v -i eth0 -s eth1 -o 01::01
 
 
-Next place the api.py file in consumer-bitrate folder and run python api.py
+Next run the python api.py file in consumer-bitrate folder.
 
