@@ -8,8 +8,8 @@ import time
 
 
 
-client=InfluxDBClient('localhost',8086,'admin','admin',database='ANM')
-client.create_database('ANM')
+client=InfluxDBClient('10.0.1.101',8086,'stark','stark',database='stark')
+client.create_database('stark')
 def store(bit_rate,time):
       json=[
               {
