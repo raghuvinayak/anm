@@ -1,121 +1,192 @@
-#!flask/bin/python
-
-import sys
-import socket
-import threading
+import os, sys
+import subprocess
+from subprocess import Popen
 from flask import Flask
-from flask import send_file
-import os
-import time
-from multiprocessing import Process
-import subprocess, shlex
+import threading
+from threading import Thread
+from influxdb import InfluxDBClient
+from flask import abort
+from functools import wraps
+from flask import request, Response, make_response
+
+
+stark = Flask(__name__)
+
+# Now if necessary I can modify this........
+
+eth_val = "eth1"
+influx_db = "ANM"
+user_name = "stark"
+pass_word = "stark"
+host_ip ="localhost"
 
 
 
-app = Flask(__name__)
+#This is for security 
+def check_access(username, password):
+	return username == user_name and password == pass_word
+#This you can change the security access for the curl requests
 
 
 
-#DPMI strings 
-@app.route('/run/<string:stream>', methods = ['GET'])
-def start_process(stream):
-	address = stream.split('_')
-	global don
-	don=address[0]
+def authenticate():
+	"""Sends a 401 response that enables basic auth"""
+	return Response(
+	'\n\nCould not verify your access level for that URL.\n\n'
+	'\n\nYou have to login with proper credentials\n\n', 401,
+	{'WWW-Authenticate': 'Basic realm="Login Required"'})
+
+def requires_login(f):
+	@wraps(f)
+	def decorated(*args, **kwargs):
+		auth = request.authorization
+		if not auth or not check_access(auth.username, auth.password):
+			return authenticate()
+		return f(*args, **kwargs)
+	return decorated
+
+# This is for Influxdb to store the data of bitrate and timestamps with dynamic tag values
+def influx(str,stream):
+	counter=8
+	linenum=1
+	client=InfluxDBClient(host_ip,8086,user_name,pass_word,database=influx_db)
+	for line in iter(str.readline,''):
+		line=line.rstrip()
+		if(line == ''):
+			pass
+		elif(linenum > counter):		
+			lines=line.split()
+			time=lines[0]
+			bit_rate=lines[1].split('.')
+			json_body=[ 
+        	      {
+        	       "measurement": "bitrate",
+        	       "tags": {                   
+				"Dynamic_tag": "{0}".format(stream),    
+        	        },
+        	       "fields": {
+        	            "value": bit_rate[0],
+			    "timestamp": time
+        	        }
+        	      }
+		     ]
+	
+		        client.write_points(json_body)		
+		linenum = linenum+1
+
+
+# This starts the process of dpmi_streams to start the process
+@stark.route('/run/<stream>', methods=['GET'])
+@requires_login
+def run(stream):
 	global gstream
-	gstream = '::'.join(address[1:])
-	Process(target = start_king(stream)).start()
-	return "please wait........"
+	if not gen_stream:
+		gen_stream.append(stream) 
+		gstream=gstream+gen_stream 
+		bitrate_thread(stream)
+		return '\n...Consumer-Bitrate Stream %s Has Started...\n\n' %stream
 
-#stop DPMI utils
+	if stream in gstream:
+			return '\n... bitrate stream %s is already running...\n\n' %stream
+	else:
 
-@app.route('/stop', methods=['GET'])
-def stop_service():
-         os.system("sudo pkill bitrate")
-#sudo pkill bitrate
-         return "DPMI bitrate stoped\n"
+		return '\n...I can\'t run %s stream here, use add to run another...\n\n'%stream
 
-#add New stream
 
-@app.route('/add/<string:NewStream>', methods=['GET'])
-def add_stream(NewStream):
+global gstream
+gstream=[]
 
-	#       gstream=start_process(stream)
-	address = NewStream.split('_')
-	global don
-	don=address[0]
-	addstream = '::'.join(address[1:])
-	stop_service()
-	time.sleep(1)
+
+# This is used to stop Bitrates
+@stark.route('/stop', methods=['GET'])
+@requires_login
+def stop():
+	os.system("sudo pkill bitrate")
+	del (gstream[:],gen_stream[:])
+	return "\n...DPMI Bitrate Stopped!!!!!!!!...\n\n"
+
+
+#This is used to Show the status of running streams
+@stark.route('/show', methods=['GET'])
+@requires_login
+def show():
+	if gstream >= [1]:
+		show=" ".join(str(R) for R in gstream)
+		return '\n... %s, These streams are Present...\n\n' %show
+	else:
+		return ' \n\n No streams are running to show \n\n'
+	
+#This is used to add streams 
+@stark.route('/add/<add>', methods=['GET'])
+@requires_login
+def add(add):
 	global gstream
-	gstream=gstream+' '+addstream
-	start_process(don+"_"+ gstream)
-	return "stream added\n"
-
-#delete stream
-
-@app.route('/delete/<string:deletestream>', methods=['GET'])
-def delete_stream(deletestream):
-	 address = deletestream.split('_')
-	 global don
-	 don=address[0]
-	 delstream = '::'.join(address[1:])
-	 NewStream = gstream.replace(delstream,'')
-	 stop_service()
-	 time.sleep(1)
-	 start_process(don+"_"+ NewStream)
-	 return "stream deleted\n"
-
-
-@app.route('/showstream', methods=['GET'])
-def show_service():
-#sudo pkill bitrate myName
-	return gstream[1:]
-
-
-#change stream
-@app.route('/change/<string:changestream>', methods=['GET'])
-def new_stream(changestream):
-	 address = changestream.split('_')
-	 global don
-	 don=address[0]
-	 changestream = '::'.join(address[1:])
-	 stop_service()
-	 time.sleep(1)
-	 start_process(address[0]+"_"+ changestream)
-	 return "stream changed\n"
+	if add in gstream:
+		return'\n\n This already exists please add another \n\n'
+	else:	
+		addstream=add.split(',')
+		new=[]
+		new=list(set(addstream))
+		strnew=" ".join(str(n) for n in new) 
+		gstream=gstream+new	
+		for stream in new:
+			bitrate_thread(stream)
+		return '\n\n  stream added %s.....\n\n' %strnew  
 
 
 
-def start_king(stream):
-        dpmi(stream).start()
-        return "please wait \n"
+global gen_stream
+gen_stream=[]
 
 
-
-# Piping done two types  which is using subprocess or exicute commands directly throuth os.system
-
-#def subprocess_cmd(command):
-#    process = subprocess.Popen(command,stdout=subprocess.PIPE, shell=True)
-#    proc_stdout = process.communicate()[0].strip()
-#    print proc_stdout
-
-
-def start_service(stream):
-        os.system("unbuffer -p bitrate -i " + don +" --absolute-time --format=matlab " +gstream+ "| python influx.py ")
-
-
-class dpmi(threading.Thread):
-        def __init__(self,stream):
-              threading.Thread.__init__(self)
-              self.stream = stream
-        def run(self):
-            start_service(self.stream)
-
-
-if __name__=='__main__':
-       app.run(host ='0.0.0.0')
+#This is used to delete streams 
+@stark.route('/delete/<dele>', methods=['GET'])
+@requires_login
+def delete(dele):
+	global gstream	
+	if dele not in gstream:
+		return'\n\n This %s stream is not present...\n\n' %dele
+	else:	
+		dele=dele.split(',')
+		deleting=[]
+		deleting=list(set(dele).intersection(gstream))
+		strdeleting=",".join(str(l) for l in deleting) 
+		gstream=list(set(gstream)-set(deleting))
+		strgstream=",".join(str(x) for x in gstream)
+		os.system("sudo pkill bitrate")
+		for stream in gstream:
+			bitrate_thread(stream)
+		return "\n\n Bitrate stream deleted  \n\n"
 
 
+#This is used to change streams 
+@stark.route('/change/<stream>', methods=['GET'])
+@requires_login
+def change(stream):
+	global change_stream
+	global gstream
+	global gen_stream
+	change_stream = stream
+	if change_stream in gstream: 
+		return '\n...This %s stream currently running, change to another stream...\n\n' %change_stream	
+	else:
+		stop()
+		del gen_stream[:]
+		gstream=list(set(gstream)-set(gen_stream))
+		run(change_stream)
+		return '\n...bitrate stream changed to %s...\n\n' %change_stream	
 
 
+#This starts the process 
+def bitrate_thread(stream):
+	bitrate_thread=threading.Thread(target=start_process,args=(stream,))
+	bitrate_thread.deamon=True	
+	bitrate_thread.start()
+
+def start_process(str):
+	start_process=subprocess.Popen(["unbuffer","bitrate","-i",eth_val,str],stdout=subprocess.PIPE)  
+	influx_thread=threading.Thread(target=influx,args=(start_process.stdout,str,)) 
+	influx_thread.start()
+
+if __name__ == "__main__":
+	stark.run(host='localhost', port=5000, debug=True)    
