@@ -50,7 +50,7 @@ Installation:
 
 8. Rest Api Usage:
 
-a. After installing all the above system requirements, please change the settings(variables) before starting the api.
+a. After installing all the above system requirements, please change the settings(variables) before starting the "python api.py"
 		change the (interface) "eth_val".
 		create the database and chanege the database in "influx_db".
 		change the username as required in variable "user_name". In my case user_name is stark
