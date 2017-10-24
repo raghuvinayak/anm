@@ -85,5 +85,6 @@ b. Grafana
 
 1. Add the influx database to the datasource in Grafana, to display the output
 
-2. Create the dashbord and use the above database, use the tags "Dynamic_tag" automatically displayed with the running steams.
+2. In Grafana create the dashbord and use the above database, use the tags "Dynamic_tag" automatically displayed with the running steams.
 3. Use 'distinct' as aggregration and "bitrate" as measurements
+4. In display option select "Bars" in "Draw Modes" to show the output as Histogram 
