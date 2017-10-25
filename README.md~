@@ -31,17 +31,19 @@ Installation:
 
 5.install influxdb as shown bellow
 
-		curl -sL https://repos.influxdata.com/influxdb.key | sudo apt-key add -
-		source /etc/lsb-release
-		echo "deb https://repos.influxdata.com/${DISTRIB_ID,,} ${DISTRIB_CODENAME} stable" | sudo tee /etc/apt/sources.list.d/influxdb.list
+		wget https://dl.influxdata.com/influxdb/releases/influxdb_1.3.6_amd64.deb
+		sudo dpkg -i influxdb_1.3.6_amd64.deb
+		sudo service influxdb start
 		sudo apt-get update && sudo apt-get install influxdb
 		sudo pip install influxdb
 
 6.install Grafana as shown bellow
+curl https://packagecloud.io/gpg.key | sudo apt-key add -
+		sudo apt-get update
+		sudo apt-get install grafana
+		sudo service grafana-server start
+	
 
-		wget https://s3-us-west-2.amazonaws.com/grafana-releases/release/grafana_4.4.3_amd64.deb 
-		sudo apt-get install -y adduser libfontconfig 
-		sudo dpkg -i grafana_4.4.3_amd64.deb
 
 7.install Flask as shown bellow
 		sudo pip install Flask
