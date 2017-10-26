@@ -14,8 +14,8 @@ stark = Flask(__name__)
 
 # Now if necessary I can modify this........
 
-eth_val = "eth1"
-influx_db = "ANM"
+eth_val = "eth_value"
+influx_db = "Use your database"
 user_name = "stark"
 pass_word = "stark"
 host_ip ="localhost"
